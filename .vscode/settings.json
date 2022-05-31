@@ -1,0 +1,33 @@
+{
+  "[powershell]": {
+    "editor.semanticHighlighting.enabled": true
+  },
+  "editor.insertSpaces": true,
+  "editor.rulers": [
+    120
+  ],
+  "editor.tabSize": 4,
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  "powershell.codeFormatting.addWhitespaceAroundPipe": true,
+  "powershell.codeFormatting.autoCorrectAliases": true,
+  "powershell.codeFormatting.preset": "OTBS",
+  "powershell.codeFormatting.trimWhitespaceAroundPipe": true,
+  "powershell.codeFormatting.useConstantStrings": true,
+  "powershell.codeFormatting.useCorrectCasing": true,
+  "powershell.codeFormatting.whitespaceBetweenParameters": true,
+  "powershell.integratedConsole.showOnStartup": false,
+  "powershell.scriptAnalysis.settingsPath": "PSScriptAnalyzerSettings.psd1",
+  "markdownlint.config": {
+    "MD013": false,
+    "MD024": false,
+    "MD029": false,
+    "MD033": {
+      "allowed_elements": [
+        "kbd"
+      ]
+    },
+    "MD034": false,
+    "MD038": false
+  }
+}
