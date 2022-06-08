@@ -4,7 +4,7 @@
 RootModule = 'ps-szymonos.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.3.0'
+ModuleVersion = '0.3.4'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -43,7 +43,6 @@ FunctionsToExport = @(
     # az
     'Connect-AzContext',
     'Set-SubscriptionMenu',
-    'Get-AzAccessToken',
     'Get-AzApiRequest',
     # winget
     'Get-WingetResult',

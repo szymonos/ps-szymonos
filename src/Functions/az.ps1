@@ -59,25 +59,9 @@ Set-Alias -Name ssm -Value Set-SubscriptionMenu
 
 <#
 .SYNOPSIS
-Get Azure token from current context.
-#>
-function Get-AzAccessToken {
-    # get current context
-    $ctx = Connect-AzContext
-
-    # get token
-    $azProfile = [Microsoft.Azure.Commands.Common.Authentication.Abstractions.AzureRmProfileProvider]::Instance.Profile
-    $profileClient = [Microsoft.Azure.Commands.ResourceManager.Common.RMProfileClient]::new($azProfile)
-    $token = $profileClient.AcquireAccessToken($ctx.Subscription.TenantId)
-
-    return $token
-}
-
-<#
-.SYNOPSIS
 Send Azure API request.
-.PARAMETER ResourceId
-Resource ID of the resource to query.
+.PARAMETER Scope
+Request scope.
 .PARAMETER ApiVersion
 API version of the resource to query.
 .PARAMETER Output
@@ -86,9 +70,9 @@ Output format.
 function Get-AzApiRequest {
     [CmdletBinding()]
     param (
-        [Alias('r')]
+        [Alias('s')]
         [Parameter(Mandatory, ValueFromPipeline)]
-        [string]$ResourceId,
+        [string]$Scope,
 
         [Alias('a')]
         [Parameter(Mandatory)]
@@ -104,7 +88,7 @@ function Get-AzApiRequest {
         $params = @{
             Method         = 'Get'
             Authentication = 'Bearer'
-            Token          = (Get-AzAccessToken).AccessToken | ConvertTo-SecureString -AsPlainText -Force
+            Token          = (Get-AzAccessToken -ResourceTypeName 'Arm').Token | ConvertTo-SecureString -AsPlainText -Force
             Headers        = @{ 'Content-Type' = 'application/json' }
             Body           = @{ 'api-version' = $ApiVersion }
         }
@@ -112,7 +96,7 @@ function Get-AzApiRequest {
 
     process {
         $response = Invoke-CommandRetry {
-            Invoke-RestMethod @params -Uri "https://management.azure.com$ResourceId"
+            Invoke-RestMethod @params -Uri "https://management.azure.com$Scope"
         }
         $responseList.Add($response)
     }
@@ -123,10 +107,10 @@ function Get-AzApiRequest {
                 $responseList
             }
             { $_ -in 'json' } {
-                $responseList | ConvertTo-Json -Depth 5
+                $responseList | ConvertTo-Json -Depth 10
             }
             { $_ -eq 'jsonc' } {
-                $responseList | ConvertTo-Json -Depth 5 | jq
+                $responseList | ConvertTo-Json -Depth 10 | jq
             }
         }
     }
