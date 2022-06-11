@@ -29,5 +29,8 @@
     },
     "MD034": false,
     "MD038": false
-  }
+  },
+  "git.branchProtection": [
+    "main"
+  ]
 }
