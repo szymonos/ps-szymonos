@@ -5,6 +5,7 @@
 
 # personal
 .tmp/
+.private/
 _*.*
 
 # User-specific files
