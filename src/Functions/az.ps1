@@ -59,26 +59,56 @@ Set-Alias -Name ssm -Value Set-SubscriptionMenu
 
 <#
 .SYNOPSIS
-Send Azure API request.
+Send request to Azure REST API.
 .PARAMETER Scope
 Request scope.
 .PARAMETER ApiVersion
-API version of the resource to query.
+API version.
+.PARAMETER Method
+Request method. Allowed values: Get, Patch, Put, Delete. Default: Get.
+.PARAMETER Body
+Request payload provided as string.
+.PARAMETER InFile
+Request payload provided as path to file.
 .PARAMETER Output
-Output format.
+Output format. Allowed values: json, jsonc, object. Default: object.
 #>
-function Get-AzApiRequest {
-    [CmdletBinding()]
+function Invoke-AzApiRequest {
+    [CmdletBinding(DefaultParameterSetName = 'Default')]
     param (
         [Alias('s')]
-        [Parameter(Mandatory, ValueFromPipeline)]
+        [Parameter(Mandatory, ValueFromPipeline, ParameterSetName = 'Default')]
+        [Parameter(Mandatory, ValueFromPipeline, ParameterSetName = 'Payload:Body')]
+        [Parameter(Mandatory, ValueFromPipeline, ParameterSetName = 'Payload:File')]
         [string]$Scope,
 
         [Alias('a')]
-        [Parameter(Mandatory)]
+        [Parameter(Mandatory, ParameterSetName = 'Default')]
+        [Parameter(Mandatory, ParameterSetName = 'Payload:Body')]
+        [Parameter(Mandatory, ParameterSetName = 'Payload:File')]
         [string]$ApiVersion,
 
+        [Alias('m')]
+        [Parameter(ParameterSetName = 'Default')]
+        [Parameter(ParameterSetName = 'Payload:Body')]
+        [Parameter(ParameterSetName = 'Payload:File')]
+        [ValidateSet('Get', 'Patch', 'Put', 'Delete')]
+        [string]$Method = 'Get',
+
+        [Alias('b')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'Payload:Body')]
+        [ValidateScript({ '' -ne $_ }, ErrorMessage = 'Payload cannot be empty.')]
+        [string]$Body,
+
+        [Alias('f')]
+        [Parameter(Mandatory = $false, ParameterSetName = 'Payload:File')]
+        [ValidateScript({ Test-Path $_ -PathType 'Leaf' }, ErrorMessage = "'{0}' is not a valid path.")]
+        [string]$InFile,
+
         [Alias('o')]
+        [Parameter(ParameterSetName = 'Default')]
+        [Parameter(ParameterSetName = 'Payload:Body')]
+        [Parameter(ParameterSetName = 'Payload:File')]
         [ValidateSet('json', 'jsonc', 'object')]
         [string]$Output = 'object'
     )
@@ -86,17 +116,23 @@ function Get-AzApiRequest {
     begin {
         $responseList = [Collections.Generic.List[PSCustomObject]]::new()
         $params = @{
-            Method         = 'Get'
+            Method         = $Method
             Authentication = 'Bearer'
             Token          = (Get-AzAccessToken -ResourceTypeName 'Arm').Token | ConvertTo-SecureString -AsPlainText -Force
             Headers        = @{ 'Content-Type' = 'application/json' }
-            Body           = @{ 'api-version' = $ApiVersion }
+        }
+
+        # add payload
+        if ($Body) {
+            $params.Body = $Body
+        } elseif ($InFile) {
+            $params.InFile = $InFile
         }
     }
 
     process {
         $response = Invoke-CommandRetry {
-            Invoke-RestMethod @params -Uri "https://management.azure.com$Scope"
+            Invoke-RestMethod @params -Uri "https://management.azure.com$($Scope)?api-version=$ApiVersion"
         }
         $responseList.Add($response)
     }
@@ -105,12 +141,15 @@ function Get-AzApiRequest {
         switch ($Output) {
             { $_ -eq 'object' } {
                 $responseList
+                break
             }
-            { $_ -in 'json' } {
+            { $_ -eq 'json' } {
                 $responseList | ConvertTo-Json -Depth 10
+                break
             }
             { $_ -eq 'jsonc' } {
                 $responseList | ConvertTo-Json -Depth 10 | jq
+                break
             }
         }
     }
