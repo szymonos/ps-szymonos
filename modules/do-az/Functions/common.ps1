@@ -2,6 +2,40 @@ $ErrorActionPreference = 'Stop'
 
 <#
 .SYNOPSIS
+Retry executing command if fails on HttpRequestException.
+.PARAMETER Script
+Script block of commands to execute.
+#>
+function Invoke-CommandRetry {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory)]
+        [scriptblock]$Script
+    )
+    do {
+        try {
+            Invoke-Command -ScriptBlock $Script
+            $exit = $true
+        } catch [System.Net.Http.HttpRequestException] {
+            Write-Verbose $_.ErrorDetails.Message
+            Write-Host 'Retrying...'
+        } catch [System.AggregateException] {
+            if ($_.Exception.InnerException.GetType().Name -eq 'HttpRequestException') {
+                Write-Verbose $_.ErrorDetails.Message
+                Write-Host 'Retrying...'
+            } else {
+                Write-Verbose $_.Exception.InnerException.GetType().FullName
+                Write-Error $_
+            }
+        } catch {
+            Write-Verbose $_.Exception.GetType().FullName
+            Write-Error $_
+        }
+    } until ($exit)
+}
+
+<#
+.SYNOPSIS
 Get index of a value in provided array from selection menu.
 .PARAMETER Array
 Array of strings to get the selection menu.
@@ -43,38 +77,4 @@ function Get-ArrayIndexMenu {
 
     # return array index or value
     return $Output -eq 'index' ? $i : $Array[$i]
-}
-
-<#
-.SYNOPSIS
-Retry executing command if fails on HttpRequestException.
-.PARAMETER Script
-Script block of commands to execute.
-#>
-function Invoke-CommandRetry {
-    [CmdletBinding()]
-    param (
-        [Parameter(Mandatory)]
-        [scriptblock]$Script
-    )
-    do {
-        try {
-            Invoke-Command -ScriptBlock $Script
-            $exit = $true
-        } catch [System.Net.Http.HttpRequestException] {
-            Write-Verbose $_.ErrorDetails.Message
-            Write-Host 'Retrying...'
-        } catch [System.AggregateException] {
-            if ($_.Exception.InnerException.GetType().Name -eq 'HttpRequestException') {
-                Write-Verbose $_.ErrorDetails.Message
-                Write-Host 'Retrying...'
-            } else {
-                Write-Verbose $_.Exception.InnerException.GetType().FullName
-                Write-Error $_
-            }
-        } catch {
-            Write-Verbose $_.Exception.GetType().FullName
-            Write-Error $_
-        }
-    } until ($exit)
 }

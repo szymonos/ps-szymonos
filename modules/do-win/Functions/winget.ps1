@@ -1,3 +1,5 @@
+$ErrorActionPreference = 'Stop'
+
 <#
 .SYNOPSIS
 Parse winget upgrade results and return object with list of upgradeable packages.
@@ -17,43 +19,41 @@ function Get-WingetResult {
     )
 
     begin {
-        if (-not $IsWindows) {
-            Write-Warning 'Function can be executed on Windows only!'
-            break
+        # get results
+        if ($Option -eq 'list') {
+            [string[]]$result = @(winget list --source 'winget').Where({ $_ -match '^\w' })
+        } elseif ($Option -eq 'upgrade') {
+            [string[]]$result = @(winget upgrade --source 'winget').Where({ $_ -match '^\w' -and $_ -notmatch '^\d+ +(upgrades|package)' })
+            # return if winget hasn't returned upgradeable packages
+            try {
+                if (-not $result[0].StartsWith('Name')) {
+                    return $result[0]
+                }
+            } catch {
+                return
+            }
         }
     }
 
     process {
-        # get results
-        if ($Option -eq 'list') {
-            [string[]]$result = @(winget list).Where({ $_ -match '^\w' })
-        } else {
-            [string[]]$result = @(winget upgrade).Where({ $_ -match '^\w' -and $_ -notmatch '^\d+ +upgrades' })
-        }
-
-        # return if winget hasn't returned upgradeable packages
-        try {
-            if (-not $result[0].StartsWith('Name')) {
-                return $result[0]
-            }
-        } catch {
-            return
-        }
-
         # index columns
         $idIndex = $result[0].IndexOf('Id')
         $versionIndex = $result[0].IndexOf('Version')
-        $availableIndex = $result[0].IndexOf('Available')
-        $sourceIndex = $result[0].IndexOf('Source')
+        if ($Option -eq 'upgrade') {
+            $availableIndex = $result[0].IndexOf('Available')
+        }
         # Now cycle in real package and split accordingly
         $packages = [Collections.Generic.List[PSObject]]::new()
         for ($i = 1; $i -lt $result.Length; $i++) {
-            $package = [ordered]@{
-                Name      = $result[$i].Substring(0, $idIndex).TrimEnd()
-                Id        = $result[$i].Substring($idIndex, $versionIndex - $idIndex).TrimEnd()
-                Version   = $result[$i].Substring($versionIndex, $availableIndex - $versionIndex).TrimEnd()
-                Available = $result[$i].Substring($availableIndex, $sourceIndex - $availableIndex).TrimEnd()
-                Source    = $result[$i].Substring($sourceIndex, $result[$i].Length - $sourceIndex)
+            $package = @{
+                Name = $result[$i].Substring(0, $idIndex).TrimEnd()
+                Id   = $result[$i].Substring($idIndex, $versionIndex - $idIndex).TrimEnd()
+            }
+            if ($Option -eq 'list') {
+                $package.Version = $result[$i].Substring($versionIndex, $result[$i].Length - $versionIndex).TrimEnd()
+            } elseif ($Option -eq 'upgrade') {
+                $package.Version = $result[$i].Substring($versionIndex, $availableIndex - $versionIndex).TrimEnd()
+                $package.Available = $result[$i].Substring($availableIndex, $result[$i].Length - $availableIndex).TrimEnd()
             }
             $packages.Add([PSCustomObject]$package)
         }
@@ -61,7 +61,7 @@ function Get-WingetResult {
 
     end {
         if ($Option -eq 'list') {
-            return $packages | Sort-Object -Property Name | Select-Object Name, Id, Version, Source
+            return $packages | Sort-Object -Property Name | Select-Object Name, Id, Version
         } else {
             return $packages | Sort-Object -Property Name | Select-Object Name, Id, Version, Available
         }
@@ -93,9 +93,7 @@ function Invoke-WingetUpgrade {
     }
 
     process {
-        $packages = Get-WingetResult -o 'upgrade' | Where-Object {
-            $_.Id -notin $ExcludedItems -and $_.Version -ne 'Unknown'
-        }
+        $packages = (Get-WingetResult -o 'upgrade').Where({ $_.Id -notin $ExcludedItems })
         foreach ($item in $packages) {
             [Console]::WriteLine("`e[95m$($item.Name)`e[0m")
             winget.exe upgrade --id $item.Id

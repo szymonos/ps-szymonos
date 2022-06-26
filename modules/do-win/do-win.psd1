@@ -1,16 +1,16 @@
 @{
 
 # Script module or binary module file associated with this manifest.
-RootModule = 'ps-szymonos.psm1'
+RootModule = 'do-win.psm1'
 
 # Version number of this module.
-ModuleVersion = '0.5.0'
+ModuleVersion = '0.1.1'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
 
 # ID used to uniquely identify this module
-GUID = 'b16dc52a-b38a-4126-bff8-a8202aed4258'
+GUID = '55883a77-76a6-49df-94ab-6883a44736ad'
 
 # Author of this module
 Author = 'Szymon Osiecki'
@@ -19,31 +19,22 @@ Author = 'Szymon Osiecki'
 Copyright = '(c) Szymon Osiecki. All rights reserved.'
 
 # Description of the functionality provided by this module
-Description = 'This module is intended to streamline my workflow with PowerShell.'
+Description = 'Module intended to streamline work on Windows.'
 
 # Minimum version of the PowerShell engine required by this module
 PowerShellVersion = '7.0'
 
 # Modules that must be imported into the global environment prior to importing this module
-RequiredModules = @(
-    'Az.Accounts',
-    'Az.ResourceGraph'
-)
+RequiredModules = @()
 
 # Script files (.ps1) that are run in the caller's environment prior to importing this module.
-ScriptsToProcess = @(
-    'Classes/az.ps1'
-)
+ScriptsToProcess = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
 FunctionsToExport = @(
-    # common
-    'Get-ArrayIndexMenu',
-    'Invoke-CommandRetry',
-    # az
-    'Connect-AzContext',
-    'Set-SubscriptionMenu',
-    'Invoke-AzApiRequest',
+    # forms
+    'Get-FileName',
+    'Get-FolderPath'
     # winget
     'Get-WingetResult',
     'Invoke-WingetUpgrade'
@@ -56,9 +47,7 @@ CmdletsToExport = @()
 VariablesToExport = '*'
 
 # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-AliasesToExport = @(
-    'ssm'
-)
+AliasesToExport = @()
 
 # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
 PrivateData = @{

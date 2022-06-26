@@ -1,19 +1,15 @@
 . $PSScriptRoot/Functions/common.ps1
 . $PSScriptRoot/Functions/az.ps1
-. $PSScriptRoot/Functions/winget.ps1
 
 $exportModuleMemberParams = @{
     Function = @(
         # common
-        'Get-ArrayIndexMenu',
         'Invoke-CommandRetry',
+        'Get-ArrayIndexMenu',
         # az
         'Connect-AzContext',
         'Set-SubscriptionMenu',
-        'Invoke-AzApiRequest',
-        # winget
-        'Get-WingetResult',
-        'Invoke-WingetUpgrade'
+        'Invoke-AzApiRequest'
     )
     Variable = @()
     Alias  = @(

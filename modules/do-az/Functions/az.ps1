@@ -46,10 +46,26 @@ function Set-SubscriptionMenu {
     # query graph api for subscriptions
     $tenantId = (Connect-AzContext).Tenant.Id
     $query = "ResourceContainers | where type =~ 'microsoft.resources/subscriptions' | project name, subscriptionId"
-    $subscriptions = Search-AzGraph -Query $query -ManagementGroup $tenantId | Sort-Object name
+    $subscriptions = try {
+        Search-AzGraph -Query $query -ManagementGroup $tenantId | Sort-Object name
+    } catch [Microsoft.Azure.Management.ResourceGraph.Models.ErrorResponseException] {
+        if (($_.ErrorDetails.Message | ConvertFrom-Json).error.details.code -eq 'ManagementGroupsNotFoundInTenant') {
+            Search-AzGraph -Query $query | Sort-Object name
+        } else {
+            Write-Verbose $_.ErrorDetails.Message
+            Write-Error $_
+        }
+    } catch {
+        Write-Verbose $_.Exception.GetType().FullName
+        Write-Error $_
+    }
 
     # select subscription from menu
-    $i = Get-ArrayIndexMenu -Array $subscriptions.name -Message 'Select subscription'
+    if ($subscriptions.Count -gt 1) {
+        $i = Get-ArrayIndexMenu -Array $subscriptions.name -Message 'Select subscription'
+    } else {
+        $i = 0
+    }
     $sub = (Connect-AzContext $subscriptions[$i].subscriptionId).Subscription
 
     return $sub
@@ -96,19 +112,17 @@ function Invoke-AzApiRequest {
         [string]$Method = 'Get',
 
         [Alias('b')]
-        [Parameter(Mandatory = $false, ParameterSetName = 'Payload:Body')]
+        [Parameter(ParameterSetName = 'Payload:Body')]
         [ValidateScript({ '' -ne $_ }, ErrorMessage = 'Payload cannot be empty.')]
         [string]$Body,
 
         [Alias('f')]
-        [Parameter(Mandatory = $false, ParameterSetName = 'Payload:File')]
+        [Parameter(ParameterSetName = 'Payload:File')]
         [ValidateScript({ Test-Path $_ -PathType 'Leaf' }, ErrorMessage = "'{0}' is not a valid path.")]
         [string]$InFile,
 
         [Alias('o')]
         [Parameter(ParameterSetName = 'Default')]
-        [Parameter(ParameterSetName = 'Payload:Body')]
-        [Parameter(ParameterSetName = 'Payload:File')]
         [ValidateSet('json', 'jsonc', 'object')]
         [string]$Output = 'object'
     )
@@ -140,16 +154,13 @@ function Invoke-AzApiRequest {
     end {
         switch ($Output) {
             { $_ -eq 'object' } {
-                $responseList
-                break
+                return $responseList
             }
             { $_ -eq 'json' } {
-                $responseList | ConvertTo-Json -Depth 10
-                break
+                return $responseList | ConvertTo-Json -Depth 10
             }
             { $_ -eq 'jsonc' } {
-                $responseList | ConvertTo-Json -Depth 10 | jq
-                break
+                return $responseList | ConvertTo-Json -Depth 10 | jq
             }
         }
     }
