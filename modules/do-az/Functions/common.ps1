@@ -17,7 +17,11 @@ function Invoke-CommandRetry {
             Invoke-Command -ScriptBlock $Script
             $exit = $true
         } catch [System.Net.Http.HttpRequestException] {
-            Write-Verbose $_.ErrorDetails.Message
+            if ($_.ErrorDetails) {
+                Write-Verbose $_.ErrorDetails.Message
+            } else {
+                Write-Verbose $_.Exception.Message
+            }
             Write-Host 'Retrying...'
         } catch [System.AggregateException] {
             if ($_.Exception.InnerException.GetType().Name -eq 'HttpRequestException') {
