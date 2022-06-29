@@ -28,9 +28,16 @@ class AzResource {
         }
     }
 
+    AzResource ([guid]$subscriptionId, [string]$resourceGroupName, [string]$resourceType, [string]$name) {
+        $this.Name = $name
+        $this.ResourceGroupName = $resourceGroupName
+        $this.SubscriptionId = $subscriptionId
+        $this.ResourceType = $resourceType
+        $this.ResourceId = "/subscriptions/$subscriptionId/resourceGroups/$resourceGroupName/providers/$resourceType/$name"
+    }
+
     [string] GetSubscriptionName () {
-        $query = "ResourceContainers | where type =~ 'microsoft.resources/subscriptions'"
-        $this.SubscriptionName = (Search-AzGraph -Query $query -Subscription $this.SubscriptionId).name
+        $this.SubscriptionName = (Get-AzGraphSubscriptions -SubscriptionId $this.SubscriptionId).name
 
         return $this.SubscriptionName
     }

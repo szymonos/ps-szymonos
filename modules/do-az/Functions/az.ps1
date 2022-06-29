@@ -9,6 +9,7 @@ Subscription Name or ID.
 Tenant Name or ID.
 #>
 function Connect-AzContext {
+    [CmdletBinding()]
     param (
         [Alias('s')]
         [string]$Subscription,
@@ -17,25 +18,42 @@ function Connect-AzContext {
         [string]$Tenant
     )
 
-    $ctx = Get-AzContext
-    if ($ctx) {
-        if ($Subscription -and $Subscription -notin @($ctx.Subscription.Id, $ctx.Subscription.Name)) {
-            $ctx = Invoke-CommandRetry {
-                Set-AzContext -Subscription $Subscription -Tenant $ctx.Subscription.TenantId
+    begin {
+        $ctx = Get-AzContext
+    }
+
+    process {
+        if ($ctx) {
+            if ($PSBoundParameters.Subscription -and $PSBoundParameters.Subscription -notin @($ctx.Subscription.Id, $ctx.Subscription.Name)) {
+                $ctx = Invoke-CommandRetry {
+                    Set-AzContext -Subscription $Subscription -Tenant $ctx.Tenant.Id
+                }
             }
-        }
-    } else {
-        $cmd = "Connect-AzAccount$($Subscription ? " -Subscription $Subscription" : '')$($Tenant ? " -Tenant $Tenant" : '')"
-        $ctx = Invoke-CommandRetry {
-            try {
-                (Invoke-Expression -Command "$cmd -WarningAction Stop" 3>$null).Context
-            } catch [System.Management.Automation.ActionPreferenceStopException] {
-                (Invoke-Expression -Command "$cmd -UseDeviceAuthentication" -Verbose).Context
+        } else {
+            $param = @{}
+            if ($PSBoundParameters.Subscription) {
+                $param.Subscription = $Subscription
+            }
+            if ($PSBoundParameters.Tenant) {
+                $param.Tenant = $Tenant
+            }
+
+            $ctx = Invoke-CommandRetry {
+                try {
+                    (Connect-AzAccount @param -WarningAction Stop 3>$null).Context
+                } catch [System.Management.Automation.ActionPreferenceStopException] {
+                    (Connect-AzAccount @param -UseDeviceAuthentication).Context
+                } catch {
+                    Write-Verbose $_.Exception.GetType().FullName
+                    Write-Error $_
+                }
             }
         }
     }
 
-    return $ctx
+    end {
+        return $ctx
+    }
 }
 
 <#
@@ -43,21 +61,14 @@ function Connect-AzContext {
 Set subscription context from selection menu.
 #>
 function Set-SubscriptionMenu {
+    [CmdletBinding()]
+    param (
+        [switch]$cli
+    )
     # query graph api for subscriptions
-    $tenantId = (Connect-AzContext).Tenant.Id
     $query = "ResourceContainers | where type =~ 'microsoft.resources/subscriptions' | project name, subscriptionId"
-    $subscriptions = try {
-        Search-AzGraph -Query $query -ManagementGroup $tenantId | Sort-Object name
-    } catch [Microsoft.Azure.Management.ResourceGraph.Models.ErrorResponseException] {
-        if (($_.ErrorDetails.Message | ConvertFrom-Json).error.details.code -eq 'ManagementGroupsNotFoundInTenant') {
-            Search-AzGraph -Query $query | Sort-Object name
-        } else {
-            Write-Verbose $_.ErrorDetails.Message
-            Write-Error $_
-        }
-    } catch {
-        Write-Verbose $_.Exception.GetType().FullName
-        Write-Error $_
+    $subscriptions = Invoke-CommandRetry {
+        Search-AzGraph -Query $query | Sort-Object name
     }
 
     # select subscription from menu
@@ -66,7 +77,12 @@ function Set-SubscriptionMenu {
     } else {
         $i = 0
     }
-    $sub = (Connect-AzContext $subscriptions[$i].subscriptionId).Subscription
+    if ($cli) {
+        az account set --subscription $subscriptions[$i].subscriptionId
+        az account show | ConvertFrom-Json | Select-Object name, id, tenantId, state
+    } else {
+        $sub = (Connect-AzContext $subscriptions[$i].subscriptionId).Subscription
+    }
 
     return $sub
 }
