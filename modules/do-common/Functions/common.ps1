@@ -1,7 +1,13 @@
-function Format-Duration ([timespan]$TimeSpan) {
-    <#
-    .SYNOPSIS
-    Print timespan in human readable format.#>
+<#
+.SYNOPSIS
+Print timespan in human readable format.
+#>
+function Format-Duration {
+    [CmdletBinding()]
+    param (
+        [timespan]$TimeSpan
+    )
+
     switch ($TimeSpan) {
         { $_.TotalMilliseconds -gt 0 -and $_.TotalMilliseconds -lt 10 } { '{0:N2}ms' -f $_.TotalMilliseconds }
         { $_.TotalMilliseconds -ge 10 -and $_.TotalMilliseconds -lt 100 } { '{0:N1}ms' -f $_.TotalMilliseconds }
@@ -15,6 +21,29 @@ function Format-Duration ([timespan]$TimeSpan) {
     }
 }
 
+<#
+.SYNOPSIS
+Get the aliases for any cmdlet.
+#>
+function Get-CmdletAlias {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory)]
+        [string]$CmdletName
+    )
+
+    Get-Alias | `
+        Where-Object -FilterScript { $_.Definition -match $CmdletName } | `
+        Sort-Object -Property Definition, Name | `
+        Select-Object -Property Definition, Name
+}
+
+Set-Alias -Name gca -Value Get-CmdletAlias
+
+<#
+.SYNOPSIS
+Generate a random string.
+#>
 function New-Password {
     # https://powersnippets.com/create-password/
     [CmdletBinding()]

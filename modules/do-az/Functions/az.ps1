@@ -169,13 +169,13 @@ function Invoke-AzApiRequest {
 
     end {
         switch ($Output) {
-            { $_ -eq 'object' } {
+            'object' {
                 return $responseList
             }
-            { $_ -eq 'json' } {
+            'json' {
                 return $responseList | ConvertTo-Json -Depth 10
             }
-            { $_ -eq 'jsonc' } {
+            'jsonc' {
                 return $responseList | ConvertTo-Json -Depth 10 | jq
             }
         }

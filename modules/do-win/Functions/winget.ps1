@@ -27,7 +27,8 @@ function Get-WingetResult {
             # return if winget hasn't returned upgradeable packages
             try {
                 if (-not $result[0].StartsWith('Name')) {
-                    return $result[0]
+                    Write-Host $result -ForegroundColor Yellow
+                    return
                 }
             } catch {
                 return
@@ -86,20 +87,19 @@ function Invoke-WingetUpgrade {
     )
 
     begin {
-        if (-not $IsWindows) {
+        if ([System.Environment]::OSVersion.Platform -ne 'Win32NT') {
             Write-Warning 'Function can be executed on Windows only!'
             break
         }
     }
 
     process {
-        $packages = (Get-WingetResult -o 'upgrade').Where({ $_.Id -notin $ExcludedItems })
-        foreach ($item in $packages) {
-            [Console]::WriteLine("`e[95m$($item.Name)`e[0m")
-            winget.exe upgrade --id $item.Id
+        $packages = (Get-WingetResult -o 'upgrade') | Where-Object {
+            $_.Id -notin $ExcludedItems
         }
-        if (-not $packages.Count) {
-            Write-Host 'No packages to upgrade.'
+        foreach ($item in $packages) {
+            Write-Host $item.Name -ForegroundColor Magenta
+            winget.exe upgrade --id $item.Id
         }
     }
 }
